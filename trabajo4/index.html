@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Alumnos</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            max-width: 600px; 
+            margin: 2rem auto; 
+            padding: 0 1rem; 
+            background-color: #f9fafb;
+            color: #1f2937;
+        }
+        form { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 1rem; 
+            margin-bottom: 2rem; 
+            padding: 1.5rem; 
+            background-color: white;
+            border: 1px solid #e5e7eb; 
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        input, button {
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-peligro {
+            background-color: #dc2626;
+            margin-top: 1rem;
+            width: 100%;
+        }
+        .btn-peligro:hover {
+            background-color: #b91c1c;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            background-color: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        th, td { 
+            padding: 0.75rem; 
+            border: 1px solid #e5e7eb; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #f3f4f6; 
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Cargar Alumno</h2>
+    <form id="alumnoForm">
+        <input type="text" id="nombre" placeholder="Nombre completo" required>
+        <input type="number" id="edad" placeholder="Edad" min="1" required>
+        <input type="number" id="nota" placeholder="Nota" min="0" max="10" step="0.1" required>
+        <button type="submit">Guardar</button>
+    </form>
+
+    <h2>Lista de Alumnos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Edad</th>
+                <th>Nota</th>
+            </tr>
+        </thead>
+        <tbody id="tablaAlumnos">
+            </tbody>
+    </table>
+    
+    <button id="btnLimpiar" class="btn-peligro">Limpiar Lista Completa</button>
+
+    <script>
+        const form = document.getElementById('alumnoForm');
+        const tabla = document.getElementById('tablaAlumnos');
+        const btnLimpiar = document.getElementById('btnLimpiar');
+
+        // Función para obtener y ordenar los datos
+        function obtenerAlumnos() {
+            const datosGuardados = localStorage.getItem('alumnos');
+            let alumnos = datosGuardados ? JSON.parse(datosGuardados) : [];
+
+            alumnos.sort((a, b) => {
+                if (b.nota !== a.nota) {
+                    return b.nota - a.nota; 
+                }
+                return a.nombre.localeCompare(b.nombre);
+            });
+
+            return alumnos;
+        }
+
+        // Función para dibujar la tabla al cargar la página
+        function renderizarTabla() {
+            const alumnos = obtenerAlumnos();
+            tabla.innerHTML = ''; 
+
+            alumnos.forEach(alumno => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td>${alumno.nombre}</td>
+                    <td>${alumno.edad}</td>
+                    <td>${alumno.nota}</td>
+                `;
+                tabla.appendChild(fila);
+            });
+        }
+
+        // Evento al enviar el formulario
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); 
+
+            const nuevoAlumno = {
+                nombre: document.getElementById('nombre').value.trim(),
+                edad: parseInt(document.getElementById('edad').value),
+                nota: parseFloat(document.getElementById('nota').value)
+            };
+
+            const alumnos = obtenerAlumnos();
+            alumnos.push(nuevoAlumno);
+            localStorage.setItem('alumnos', JSON.stringify(alumnos));
+
+            window.location.reload(); 
+        });
+
+        // Evento para limpiar la lista
+        btnLimpiar.addEventListener('click', function() {
+            const confirmacion = confirm('¿Estás seguro de que deseas borrar todos los alumnos de la lista?');
+            
+            if (confirmacion) {
+                // Elimina específicamente la clave 'alumnos' del localStorage
+                localStorage.removeItem('alumnos');
+                // Recarga la página para mostrar la tabla vacía
+                window.location.reload();
+            }
+        });
+
+        // Ejecutar al iniciar
+        renderizarTabla();
+    </script>
+</body>
+</html>
