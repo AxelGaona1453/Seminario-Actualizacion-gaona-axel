@@ -3,75 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Alumnos</title>
+    <title>Registro de Alumnos (Backend)</title>
     <style>
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            max-width: 600px; 
-            margin: 2rem auto; 
-            padding: 0 1rem; 
-            background-color: #f9fafb;
-            color: #1f2937;
-        }
-        form { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 1rem; 
-            margin-bottom: 2rem; 
-            padding: 1.5rem; 
-            background-color: white;
-            border: 1px solid #e5e7eb; 
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        input, button {
-            padding: 0.75rem;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-        button {
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover {
-            background-color: #1d4ed8;
-        }
-        .btn-peligro {
-            background-color: #dc2626;
-            margin-top: 1rem;
-            width: 100%;
-        }
-        .btn-peligro:hover {
-            background-color: #b91c1c;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            background-color: white;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        th, td { 
-            padding: 0.75rem; 
-            border: 1px solid #e5e7eb; 
-            text-align: left; 
-        }
-        th { 
-            background-color: #f3f4f6; 
-        }
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; background-color: #f9fafb; color: #1f2937; }
+        form { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem; padding: 1.5rem; background-color: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        input, button { padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
+        button { background-color: #2563eb; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #1d4ed8; }
+        .btn-peligro { background-color: #dc2626; margin-top: 1rem; width: 100%; }
+        .btn-peligro:hover { background-color: #b91c1c; }
+        table { width: 100%; border-collapse: collapse; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { padding: 0.75rem; border: 1px solid #e5e7eb; text-align: left; }
+        th { background-color: #f3f4f6; }
     </style>
 </head>
 <body>
 
-    <h2>Cargar Alumno</h2>
+    <h2>Cargar Alumno (Persistencia en Servidor)</h2>
     <form id="alumnoForm">
         <input type="text" id="nombre" placeholder="Nombre completo" required>
         <input type="number" id="edad" placeholder="Edad" min="1" required>
         <input type="number" id="nota" placeholder="Nota" min="0" max="10" step="0.1" required>
-        <button type="submit">Guardar</button>
+        <button type="submit">Guardar en el Servidor</button>
     </form>
 
     <h2>Lista de Alumnos</h2>
@@ -84,72 +37,84 @@
             </tr>
         </thead>
         <tbody id="tablaAlumnos">
-            </tbody>
+            <tr><td colspan="3">Cargando datos desde el servidor...</td></tr>
+        </tbody>
     </table>
     
-    <button id="btnLimpiar" class="btn-peligro">Limpiar Lista Completa</button>
+    <button id="btnLimpiar" class="btn-peligro">Borrar mis datos del servidor</button>
 
     <script>
+        // 1. Gestionar la identidad del dispositivo
+        let clientId = localStorage.getItem('dispositivo_id');
+        if (!clientId) {
+            // Si es la primera vez, generamos un ID aleatorio único para esta PC/Navegador
+            clientId = 'cliente_' + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('dispositivo_id', clientId);
+        }
+
+        // Configuramos las cabeceras para que el servidor sepa quién está haciendo la petición
+        const headersComunes = {
+            'Content-Type': 'application/json',
+            'x-client-id': clientId
+        };
+
         const form = document.getElementById('alumnoForm');
         const tabla = document.getElementById('tablaAlumnos');
         const btnLimpiar = document.getElementById('btnLimpiar');
 
-        // Función para obtener y ordenar los datos
-        function obtenerAlumnos() {
-            const datosGuardados = localStorage.getItem('alumnos');
-            let alumnos = datosGuardados ? JSON.parse(datosGuardados) : [];
+        // Función para pedir los datos al servidor y dibujar la tabla
+        async function renderizarTabla() {
+            try {
+                const respuesta = await fetch('/api/alumnos', { headers: headersComunes });
+                const alumnos = await respuesta.json();
 
-            alumnos.sort((a, b) => {
-                if (b.nota !== a.nota) {
-                    return b.nota - a.nota; 
+                // Ordenar los datos
+                alumnos.sort((a, b) => {
+                    if (b.nota !== a.nota) return b.nota - a.nota; 
+                    return a.nombre.localeCompare(b.nombre);
+                });
+
+                tabla.innerHTML = ''; 
+                alumnos.forEach(alumno => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `<td>${alumno.nombre}</td><td>${alumno.edad}</td><td>${alumno.nota}</td>`;
+                    tabla.appendChild(fila);
+                });
+
+                if (alumnos.length === 0) {
+                    tabla.innerHTML = '<tr><td colspan="3">No tienes alumnos cargados.</td></tr>';
                 }
-                return a.nombre.localeCompare(b.nombre);
-            });
-
-            return alumnos;
+            } catch (error) {
+                console.error("Error conectando al servidor:", error);
+                tabla.innerHTML = '<tr><td colspan="3" style="color:red;">Error al cargar los datos del servidor.</td></tr>';
+            }
         }
 
-        // Función para dibujar la tabla al cargar la página
-        function renderizarTabla() {
-            const alumnos = obtenerAlumnos();
-            tabla.innerHTML = ''; 
-
-            alumnos.forEach(alumno => {
-                const fila = document.createElement('tr');
-                fila.innerHTML = `
-                    <td>${alumno.nombre}</td>
-                    <td>${alumno.edad}</td>
-                    <td>${alumno.nota}</td>
-                `;
-                tabla.appendChild(fila);
-            });
-        }
-
-        // Evento al enviar el formulario
-        form.addEventListener('submit', function(e) {
+        // Enviar nuevo alumno al servidor
+        form.addEventListener('submit', async function(e) {
             e.preventDefault(); 
-
             const nuevoAlumno = {
                 nombre: document.getElementById('nombre').value.trim(),
                 edad: parseInt(document.getElementById('edad').value),
                 nota: parseFloat(document.getElementById('nota').value)
             };
 
-            const alumnos = obtenerAlumnos();
-            alumnos.push(nuevoAlumno);
-            localStorage.setItem('alumnos', JSON.stringify(alumnos));
+            await fetch('/api/alumnos', {
+                method: 'POST',
+                headers: headersComunes,
+                body: JSON.stringify(nuevoAlumno)
+            });
 
-            window.location.reload(); 
+            window.location.reload(); // Recarga la página como solicitaste
         });
 
-        // Evento para limpiar la lista
-        btnLimpiar.addEventListener('click', function() {
-            const confirmacion = confirm('¿Estás seguro de que deseas borrar todos los alumnos de la lista?');
-            
-            if (confirmacion) {
-                // Elimina específicamente la clave 'alumnos' del localStorage
-                localStorage.removeItem('alumnos');
-                // Recarga la página para mostrar la tabla vacía
+        // Borrar datos del servidor
+        btnLimpiar.addEventListener('click', async function() {
+            if (confirm('¿Borrar tus datos en el servidor?')) {
+                await fetch('/api/alumnos', {
+                    method: 'DELETE',
+                    headers: headersComunes
+                });
                 window.location.reload();
             }
         });
